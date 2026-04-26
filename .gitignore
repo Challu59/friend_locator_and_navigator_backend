@@ -1,0 +1,27 @@
+# --- Python/Django Specific ---
+# Virtual Environment 
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database 
+db.sqlite3
+
+# Environment variables 
+.env
+
+# Media and Static 
+media/
+# static/ 
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
