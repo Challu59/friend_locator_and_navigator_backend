@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'accounts',
     'chat',
     'corsheaders',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -128,6 +129,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Navchat API',
+    'DESCRIPTION': 'API documentation for navchat application.',
+    'VERSION': '1.0.0',
 }
 
 SIMPLE_JWT = {
