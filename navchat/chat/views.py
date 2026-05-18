@@ -1,12 +1,12 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
-from .models import ChatRoom
-from .serializers import ChatRoomSerializer
+from .models import ChatRoom, Message
+from .serializers import ChatRoomSerializer, MessageSerializer
 
 User = get_user_model
 
@@ -63,6 +63,59 @@ class CreateOrGetChatRoomView(APIView):
         return Response(serializer.data, status = status.HTTP_201_CREATED)
 
         
+class MessageListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # helper function to check if room exists and if the user belongs to the room
+    def get_room(self, room_id, user):
+        room = get_object_or_404(ChatRoom, id = room_id)
+        if not room.participants.filter(id = user.id).exists():
+            return None
+        return room
+    
+    # function to return room messages
+    def get(self, request, room_id):
+        room = self.get_room(room_id, request.user)
+
+        if room is None:
+            return Response(
+                {'detail': 'Access denied'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        messages = room.messages.all()
+
+        serializer = MessageSerializer(messages, many = True)
+        return Response(serializer.data)
+    
+
+    # function to post new message from the frontenc
+    def post(self, request, room_id):
+        room = self.get_room(room_id, request.user)
+
+        if room is None:
+            return Response(
+                {'detail': 'Access denied'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        serializer = MessageSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save(
+                room = room,
+                sender = request.user
+            )
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+            )
+        
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
 
 
 
