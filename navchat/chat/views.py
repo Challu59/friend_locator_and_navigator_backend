@@ -8,13 +8,22 @@ from rest_framework import status
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer, MessageSerializer
 
-User = get_user_model
+User = get_user_model()
 
 class CreateOrGetChatRoomView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+
+        # test block start
+        print("View is running")
+        print("Authenticated user:", request.user)
+        print("Request data:", request.data)
+        print("ChatRoom model:", ChatRoom)
+        print("Serializer model:", ChatRoomSerializer.Meta.model)
+        print("Are they same?", ChatRoomSerializer.Meta.model is ChatRoom)
         other_user_id = request.data.get("user_id")
+        # test block over
 
         # if no user_id in request
         if not other_user_id:
@@ -28,7 +37,7 @@ class CreateOrGetChatRoomView(APIView):
             other_user = User.objects.get(id = other_user_id)
 
         # if user does not exist
-        except User.DoesNotExists:
+        except User.DoesNotExist:
             return Response(
                 {'detail': 'User not found.'},
                 status = status.HTTP_404_NOT_FOUND,
@@ -44,15 +53,21 @@ class CreateOrGetChatRoomView(APIView):
             )
         
         # if a ChatRoom already exists with the users, return it
-        existing_room = {
+        existing_room = (
             ChatRoom.objects.filter(participants = current_user)
             .filter(participants = other_user)
             .distinct()
             .first()
-        }
+        )
 
         if existing_room:
             serializer = ChatRoomSerializer(existing_room)
+
+            #test block start
+            print("Fields registered:", list(serializer.fields.keys()))
+            print("serializer data:", serializer.data)
+            #test block over
+
             return Response(serializer.data)
 
         # if a ChatRoom does not exist with the requested user, create it
