@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'chat',
     'corsheaders',
     'drf_spectacular',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -136,6 +137,14 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Navchat API',
     'DESCRIPTION': 'API documentation for navchat application.',
     'VERSION': '1.0.0',
+}
+
+ASGI_APPLICATION = 'navchat.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
 }
 
 SIMPLE_JWT = {
