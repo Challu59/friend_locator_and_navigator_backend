@@ -63,11 +63,6 @@ class CreateOrGetChatRoomView(APIView):
         if existing_room:
             serializer = ChatRoomSerializer(existing_room)
 
-            #test block start
-            print("Fields registered:", list(serializer.fields.keys()))
-            print("serializer data:", serializer.data)
-            #test block over
-
             return Response(serializer.data)
 
         # if a ChatRoom does not exist with the requested user, create it
