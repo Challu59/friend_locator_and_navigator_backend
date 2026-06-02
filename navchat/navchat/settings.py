@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'accounts',
     'chat',
+    'friends',
     'corsheaders',
     'drf_spectacular',
     'channels',
