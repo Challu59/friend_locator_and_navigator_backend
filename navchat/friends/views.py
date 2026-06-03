@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import FriendRequest
+from .models import FriendRequest, Friendship
 from .serializers import FriendRequestSerializer
 
 class SendFriendRequestView(APIView):
@@ -30,3 +30,85 @@ class SendFriendRequestView(APIView):
 
         return Response(serializer.data)
         
+class AcceptFriendRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, request_id):
+        try:
+            friend_request = FriendRequest.objects.get(
+                id = request_id,
+                receiver = request.user,
+                status = 'pending'
+            )
+        except FriendRequest.DoesNotExist:
+            return Response(
+                {
+                    'error': 'Request not found'
+                },
+                status = status.HTTP_404_NOT_FOUND
+            )
+        friend_request.status = 'accepted'
+        friend_request.save()
+
+        user1 = min(
+            friend_request.sender.id,
+            friend_request.receiver.id,
+        )
+        user2 = min(
+            friend_request.sender.id,
+            friend_request.receiver.id,
+        )
+
+        Friendship.objects.get_or_create(
+            user1_id = user1,
+            user2_id = user2,
+        )
+
+        return Response(
+            {
+                'message': 'Friend request accepted'
+            }
+        )
+    
+class RejectFriendRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, request_id):
+        try:
+            friend_request = FriendRequest.objects.get(
+                id = request_id,
+                receiver = request.user,
+                status = 'pending'
+            )
+        except FriendRequest.DoesNotExist:
+            return Response(
+                {
+                    'error': 'Request not found'
+                },
+                status = status.HTTP_404_NOT_FOUND
+            )
+        friend_request.status = 'rejected'
+        friend_request.save()
+
+        return Response(
+            {
+                'message': 'friend request rejected'
+            }
+        )
+    
+class PendingRequestsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        requests = FriendRequest.objects.filter(
+            receiver = request.user,
+            status = 'pending'
+        )
+    
+        serializer = FriendRequestSerializer(
+            requests, many = True
+        )
+
+        return Response(serializer.data)
+
+    
