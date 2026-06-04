@@ -3,9 +3,13 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import models
 
 from .models import FriendRequest, Friendship
 from .serializers import FriendRequestSerializer
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class SendFriendRequestView(APIView):
     permission_classes = [IsAuthenticated]
@@ -111,4 +115,30 @@ class PendingRequestsView(APIView):
 
         return Response(serializer.data)
 
-    
+class FriendsListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        friendships = Friendship.objects.filter(
+            models.Q(user1 = request.user) |
+            models.Q(user2 = request.user)
+        )
+        
+        friends = []
+
+        for friendship in friendships:
+            if friendship.user1 == request.user:
+                friends.append(friendship.user2)
+            else:
+                friends.append(friendship.user1)\
+        
+        data = [
+            {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+            }
+            for user in friends
+        ]
+        return Response(data)
+            
