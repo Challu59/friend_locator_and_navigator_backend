@@ -1,5 +1,28 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from .models import ChatRoom, Message
+
+User = get_user_model()
+
+
+class UserSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email']
+
+
+class LastMessageSerializer(serializers.Serializer):
+    content = serializers.CharField()
+    timestamp = serializers.DateTimeField()
+    sender_id = serializers.IntegerField()
+
+
+class ConversationSerializer(serializers.Serializer):
+    room_id = serializers.IntegerField()
+    other_user = UserSummarySerializer()
+    last_message = LastMessageSerializer(allow_null=True)
+    unread_count = serializers.IntegerField()
+
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     participants = serializers.PrimaryKeyRelatedField(

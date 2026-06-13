@@ -15,6 +15,8 @@ class SendFriendRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        print("REQUEST DATA:", request.data)
+
         receiver_id = request.data.get('receiver_id')
 
         if request.user.id == receiver_id:
@@ -58,7 +60,7 @@ class AcceptFriendRequestView(APIView):
             friend_request.sender.id,
             friend_request.receiver.id,
         )
-        user2 = min(
+        user2 = max(
             friend_request.sender.id,
             friend_request.receiver.id,
         )
@@ -115,6 +117,64 @@ class PendingRequestsView(APIView):
 
         return Response(serializer.data)
 
+class SearchUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get('q', '').strip()
+        users = User.objects.exclude(id=request.user.id)
+
+        if query:
+            users = users.filter(
+                models.Q(username__icontains=query) |
+                models.Q(email__icontains=query)
+            )
+
+        friendships = Friendship.objects.filter(
+            models.Q(user1=request.user) |
+            models.Q(user2=request.user)
+        )
+        friend_ids = set()
+        for friendship in friendships:
+            if friendship.user1_id == request.user.id:
+                friend_ids.add(friendship.user2_id)
+            else:
+                friend_ids.add(friendship.user1_id)
+
+        pending_sent = set(
+            FriendRequest.objects.filter(
+                sender=request.user,
+                status='pending',
+            ).values_list('receiver_id', flat=True)
+        )
+        pending_received = set(
+            FriendRequest.objects.filter(
+                receiver=request.user,
+                status='pending',
+            ).values_list('sender_id', flat=True)
+        )
+
+        results = []
+        for user in users[:30]:
+            if user.id in friend_ids:
+                relationship = 'friend'
+            elif user.id in pending_sent:
+                relationship = 'pending_sent'
+            elif user.id in pending_received:
+                relationship = 'pending_received'
+            else:
+                relationship = 'none'
+
+            results.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'relationship': relationship,
+            })
+
+        return Response(results)
+
+
 class FriendsListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -130,7 +190,7 @@ class FriendsListView(APIView):
             if friendship.user1 == request.user:
                 friends.append(friendship.user2)
             else:
-                friends.append(friendship.user1)\
+                friends.append(friendship.user1)
         
         data = [
             {

@@ -1,14 +1,55 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.db.models import Max
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
 from .models import ChatRoom, Message
-from .serializers import ChatRoomSerializer, MessageSerializer
+from .utils import get_unread_count, mark_room_as_read
+from .serializers import (
+    ChatRoomSerializer,
+    MessageSerializer,
+    ConversationSerializer,
+    UserSummarySerializer,
+)
 
 User = get_user_model()
+
+
+class ConversationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rooms = (
+            ChatRoom.objects.filter(participants=request.user)
+            .annotate(last_message_time=Max('messages__timestamp'))
+            .order_by('-last_message_time', '-created_at')
+            .distinct()
+            .prefetch_related('participants', 'messages')
+        )
+
+        conversations = []
+        for room in rooms:
+            other_user = room.participants.exclude(id=request.user.id).first()
+            if not other_user:
+                continue
+
+            last_message = room.messages.order_by('-timestamp').first()
+            conversations.append({
+                'room_id': room.id,
+                'other_user': UserSummarySerializer(other_user).data,
+                'last_message': {
+                    'content': last_message.content,
+                    'timestamp': last_message.timestamp,
+                    'sender_id': last_message.sender_id,
+                } if last_message else None,
+                'unread_count': get_unread_count(room, request.user),
+            })
+
+        serializer = ConversationSerializer(conversations, many=True)
+        return Response(serializer.data)
 
 class CreateOrGetChatRoomView(APIView):
     permission_classes = [IsAuthenticated]
@@ -95,6 +136,7 @@ class MessageListCreateView(APIView):
         messages = room.messages.all()
 
         serializer = MessageSerializer(messages, many = True)
+        mark_room_as_read(room, request.user)
         return Response(serializer.data)
     
 
@@ -124,6 +166,21 @@ class MessageListCreateView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+
+class MarkRoomReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, room_id):
+        room = get_object_or_404(ChatRoom, id=room_id)
+        if not room.participants.filter(id=request.user.id).exists():
+            return Response(
+                {'detail': 'Access denied'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        mark_room_as_read(room, request.user)
+        return Response({'unread_count': get_unread_count(room, request.user)})
 
 
 

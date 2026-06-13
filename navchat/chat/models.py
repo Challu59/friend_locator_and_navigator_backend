@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class ChatRoom(models.Model):
@@ -32,3 +33,23 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username}: {self.content[:30]}"
+
+
+class RoomReadState(models.Model):
+    room = models.ForeignKey(
+        ChatRoom,
+        on_delete=models.CASCADE,
+        related_name='read_states',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='room_read_states',
+    )
+    last_read_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('room', 'user')
+
+    def __str__(self):
+        return f"{self.user.username} read {self.room_id} at {self.last_read_at}"
