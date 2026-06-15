@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'accounts',
     'chat',
     'friends',
+    'locations',
     'corsheaders',
     'drf_spectacular',
     'channels',
